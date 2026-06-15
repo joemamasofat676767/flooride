@@ -2,20 +2,12 @@
 #include <fstream>
 #include <string>
 #include <bitset>
-#include <cstdint>
 #include <vector>
-#include <unordered_map>
 #include <sstream>
-
-struct MatStruct{
-	std::vector<std::string> next;
-	std::array<float, 3> embedding;
-};
-
-using mat = std::unordered_map<std::string, MatStruct>;
+#include <array>
 
 int main(){
-	std::vector<int*> mats;
+	std::vector<mat*> mats;
 	std::string path = "file.flrd";
 	bool report = true;
 	
@@ -24,31 +16,58 @@ int main(){
 	std::getline(file_in, contents);
 	
 	unsigned char JesusByte;
+	//1 = binary, 0 = text
+	bool mode;
+	int dims;
 	if(contents.size() > 0 && file_in.is_open()){
 		JesusByte = contents[0];
+		mode = (JesusByte >> 7) & 1;
+	 	dims= JesusByte & 0b01111111;
 		contents = contents.substr(1);
+		struct mat{
+			std::string word;
+			std::vector<std::string> next;
+			std::array<float, dims> embedding;
+		};
 		std::string line;
 		while(std::getline(file_in, line)){
+			std::string line_embedding = line.substr(line.find(']') + 1);
+			line_embedding = line_embedding.substr(1, line_embedding.length() - 1);
+			std::stringstream line_embedding_stream(line_embedding);
 			std::stringstream line_stream(line);
-
-			mat* word_temp = {line.substr(0, line.find('[')), };
-			mats.push_back();
+			std::vector<std::string> next;
+			std::string word;
+			while(std::getline(line_stream, word, ',')){
+				next.push_back(word);
+			}
+			std::array<float, dims> embeddings = {0, 0, 0};
+			int i = 0;
+			float embedding;
+			while(std::getline(line_embedding, embedding, ',')){
+				embeddings[i] = float(embedding);
+				i++;
+			}
+			std::string word_name = line.substr(0, line.find('['));
+			mat* word_temp = new mat{word_name, next, embeddings};
+			mats.push_back(word_temp);
 			contents += "\n" + line;
 		}
 	}
 	else{
 		JesusByte = 0b011;
+		mode = false;
+		dims = 3;
 		if(report){
-			std::cerr << "file absent: overhauled\n";
+			std::cerr << "file deficient: overhauled\n";
 		}
 	}
 	file_in.close();
 	std::cout << std::bitset<8>(JesusByte) << "\n";
-	//1 = binary, 0 = text
-	bool mode = (JesusByte >> 7) & 1;
-	std::int8_t dims= JesusByte & 0b01111111;
 	std::cout << mode << " | " << (int)dims << "\n";
 	std::cout << contents << "\n";
+	for(const auto& thing : mats){
+		std::cout << thing << ",";
+	}
 	
 	if(mode){
 		std::cout << "binary mode";
