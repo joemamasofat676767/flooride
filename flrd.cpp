@@ -3,8 +3,19 @@
 #include <string>
 #include <bitset>
 #include <cstdint>
+#include <vector>
+#include <unordered_map>
+#include <sstream>
+
+struct MatStruct{
+	std::vector<std::string> next;
+	std::array<float, 3> embedding;
+};
+
+using mat = std::unordered_map<std::string, MatStruct>;
 
 int main(){
+	std::vector<int*> mats;
 	std::string path = "file.flrd";
 	bool report = true;
 	
@@ -18,13 +29,17 @@ int main(){
 		contents = contents.substr(1);
 		std::string line;
 		while(std::getline(file_in, line)){
+			std::stringstream line_stream(line);
+
+			mat* word_temp = {line.substr(0, line.find('[')), };
+			mats.push_back();
 			contents += "\n" + line;
 		}
 	}
 	else{
 		JesusByte = 0b011;
 		if(report){
-			std::cerr << "file was not found/empty. created/added missing data.\n";
+			std::cerr << "file absent: overhauled\n";
 		}
 	}
 	file_in.close();
@@ -41,7 +56,7 @@ int main(){
 	else{
 		std::cout << "text mode";
 	}
-	
+
 	std::ofstream file_out(path, std::ios::binary);
 	file_out.write(reinterpret_cast<char*>(&JesusByte), 1);
 	file_out << contents;
