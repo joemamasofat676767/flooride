@@ -21,40 +21,74 @@ int main(){
 	std::string contents;
 	std::getline(file_in, contents);
 	
-	unsigned char JesusByte;
-	//1 = binary, 0 = text
+	// 1 = binary, 0 = text
 	bool mode;
 	int dims;
+	unsigned char JesusByte;
 	if(contents.size() > 0 && file_in.is_open()){
 		JesusByte = contents[0];
 		mode = (JesusByte >> 7) & 1;
 	 	dims= JesusByte & 0b01111111;
-		contents = contents.substr(1);
-		std::string line;
-		while(std::getline(file_in, line)){
-			std::string line_embedding = line.substr(line.find(']') + 1);
-			line_embedding = line_embedding.substr(1, line_embedding.length() - 1);
-			std::stringstream line_embedding_stream(line_embedding);
-			std::stringstream line_stream(line);
-			std::vector<std::string> next;
-			std::string word;
-			while(std::getline(line_stream, word, ',')){
-				next.push_back(word);
-			}
-			std::vector<float> embeddings;
-			int i = 0;
-			std::string embedding;
-			while(std::getline(line_embedding_stream, embedding, ',')){
-				if(i >= dims){
-					break;
+		if(!mode){
+			contents = contents.substr(1);
+			std::string line;
+			while(std::getline(file_in, line)){
+				std::string line_embedding = line.substr(line.find(']') + 1);
+				line_embedding = line_embedding.substr(1, line_embedding.length() - 1);
+				std::stringstream line_embedding_stream(line_embedding);
+				std::stringstream line_stream(line);
+				std::vector<std::string> next;
+				std::string word;
+				while(std::getline(line_stream, word, ',')){
+					next.push_back(word);
 				}
-				embeddings.push_back(std::stof(embedding));
-				i++;
+				std::vector<float> embeddings;
+				int i = 0;
+				std::string embedding;
+				while(std::getline(line_embedding_stream, embedding, ',')){
+					if(i >= dims){
+						break;
+					}
+					embeddings.push_back(std::stof(embedding));
+					i++;
+				}
+				std::string word_name = line.substr(0, line.find('['));
+				mat* word_temp = new mat{word_name, next, embeddings};
+				mats.push_back(word_temp);
+				contents += "\n" + line;
 			}
-			std::string word_name = line.substr(0, line.find('['));
-			mat* word_temp = new mat{word_name, next, embeddings};
-			mats.push_back(word_temp);
-			contents += "\n" + line;
+		}
+		else{
+			file_in.seekg(1, std::ios::binary);
+			// a = fetching word length, b = fetching word, c = fetching next words length, d = fetching embeddings
+			char state = 'a';
+			short i = 0;
+			char* word;
+			while(file_in.get(byte)){
+				switch(state){
+					case 'a':
+						word = new char[(short)byte];
+						state = 'b'
+						break;
+
+					case 'b':
+						if(i < sizeof(word)){
+							word += (char)byte;
+							i++
+						}
+						else{
+							i = 0;
+						}
+						state = c;
+						break;
+
+					case 'c':
+						break;
+
+					case 'd':
+						break;
+				}
+			}
 		}
 	}
 	else{
