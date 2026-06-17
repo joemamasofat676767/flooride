@@ -6,6 +6,12 @@
 #include <sstream>
 #include <array>
 
+struct mat{
+	std::string word;
+	std::vector<std::string> next;
+	std::vector<float> embedding;
+};
+
 int main(){
 	std::vector<mat*> mats;
 	std::string path = "file.flrd";
@@ -24,11 +30,6 @@ int main(){
 		mode = (JesusByte >> 7) & 1;
 	 	dims= JesusByte & 0b01111111;
 		contents = contents.substr(1);
-		struct mat{
-			std::string word;
-			std::vector<std::string> next;
-			std::array<float, dims> embedding;
-		};
 		std::string line;
 		while(std::getline(file_in, line)){
 			std::string line_embedding = line.substr(line.find(']') + 1);
@@ -40,11 +41,14 @@ int main(){
 			while(std::getline(line_stream, word, ',')){
 				next.push_back(word);
 			}
-			std::array<float, dims> embeddings = {0, 0, 0};
+			std::vector<float> embeddings;
 			int i = 0;
-			float embedding;
-			while(std::getline(line_embedding, embedding, ',')){
-				embeddings[i] = float(embedding);
+			std::string embedding;
+			while(std::getline(line_embedding_stream, embedding, ',')){
+				if(i >= dims){
+					break;
+				}
+				embeddings.push_back(std::stof(embedding));
 				i++;
 			}
 			std::string word_name = line.substr(0, line.find('['));
@@ -66,7 +70,15 @@ int main(){
 	std::cout << mode << " | " << (int)dims << "\n";
 	std::cout << contents << "\n";
 	for(const auto& thing : mats){
-		std::cout << thing << ",";
+		std::cout << thing << ":";
+		std::cout << thing->word << ' ';
+		for(const auto& next : thing->next){
+			std::cout << next << ' ';
+		}
+		for(const auto& embedding : thing->embedding){
+			std::cout << embedding  << ",";
+		}
+		std::cout << "\n";
 	}
 	
 	if(mode){
