@@ -12,6 +12,10 @@ struct mat{
 	std::vector<float> embedding;
 };
 
+unsigned char[] FetchWord(std::vector<unsigned char>* binary){
+	unsigned char* result = new unsigned char[sizeof(*binary)];
+}
+
 int main(){
 	std::vector<mat*> mats;
 	std::string path = "file.flrd";
@@ -60,34 +64,63 @@ int main(){
 		}
 		else{
 			file_in.seekg(1, std::ios::binary);
-			// a = fetching word length, b = fetching word, c = fetching next words length, d = fetching embeddings
+			/* a = fetching word, b = fetching next words, c = fetching embeddings, d = create mat */
 			char state = 'a';
-			short i = 0;
-			char* word;
+			std::vector<unsigned char> binary;
+			unsigned char* byte;
 			while(file_in.get(byte)){
 				switch(state){
 					case 'a':
-						word = new char[(short)byte];
-						state = 'b'
-						break;
-
-					case 'b':
-						if(i < sizeof(word)){
-							word += (char)byte;
-							i++
+						if(byte != '\0'){
+							binary.push_back(byte);
 						}
 						else{
-							i = 0;
+							unsigned char* word = new FetchWord(&binary);
+							binary.clear();
 						}
-						state = c;
-						break;
-
-					case 'c':
-						break;
-
-					case 'd':
 						break;
 				}
+				// switch(state){
+				// 	case 'a':
+				// 		word = new unsigned char[(short)byte]; 
+				// 		state = 'b';
+				// 		break;
+
+				// 	case 'b':
+				// 		if(i < sizeof(word)){
+				// 			word += (char)byte;
+				// 			i++;
+				// 		}
+				// 		else{
+				// 			i = 0;
+				// 			state = 'c';
+				// 		}
+				// 		break;
+
+				// 	case 'c':
+				// 		next_length = new unsigned char[(short)byte]; 
+				// 		state = 'd';
+				// 		break;
+
+				// 	case 'd':
+				// 		if(i < sizeof(next_length)){
+				// 			next_length += (char)byte;
+				// 			i++;
+				// 		}
+				// 		else{
+				// 			i = 0;
+				// 			state = 'e';
+				// 		}
+				// 		break;
+					
+				// 	case 'e':
+						
+				// 		break;
+
+				// 	case 'f':
+						
+				// 		break;
+				// }
 			}
 		}
 	}
