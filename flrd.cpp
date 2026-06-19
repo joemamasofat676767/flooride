@@ -6,14 +6,36 @@
 #include <sstream>
 #include <array>
 
+template<typename type>
 struct mat{
-	std::string word;
-	std::vector<std::string> next;
+	type word;
+	std::vector<type> next;
 	std::vector<float> embedding;
 };
 
-unsigned char[] FetchWord(std::vector<unsigned char>* binary){
-	unsigned char* result = new unsigned char[sizeof(*binary)];
+// these fetch functions are for binary mode
+unsigned char* FetchWord(std::vector<unsigned char>* binary){
+	unsigned char* result = new unsigned char[binary->size()]();
+	short i = 0;
+	for(const auto& byte : *binary){
+		result[i] = byte;
+		i++;
+	}
+	return result;
+}
+unsigned char* FetchWord(std::vector<unsigned char>* binary){
+	std::vector<unsigned char*>* result = new std::vector<unsigned char*>();
+	std::vector<unsigned char> word;
+	for(const auto& byte : *binary){
+		if(byte != '\0'){
+			word.push_back(byte);
+		}
+		else{
+			result.push_back(FetchWord(&word));
+			word.clear();
+		}
+	}
+	return &result;
 }
 
 int main(){
@@ -57,7 +79,7 @@ int main(){
 					i++;
 				}
 				std::string word_name = line.substr(0, line.find('['));
-				mat* word_temp = new mat{word_name, next, embeddings};
+				mat* word_temp = new mat{word_name, next, embeddings}();
 				mats.push_back(word_temp);
 				contents += "\n" + line;
 			}
@@ -68,16 +90,35 @@ int main(){
 			char state = 'a';
 			std::vector<unsigned char> binary;
 			unsigned char* byte;
+			unsigned char* word;
+			unsigned char* next;
 			while(file_in.get(byte)){
 				switch(state){
 					case 'a':
-						if(byte != '\0'){
+						if(byte != '\x1f'){
 							binary.push_back(byte);
 						}
 						else{
-							unsigned char* word = new FetchWord(&binary);
+							word = FetchWord(&binary);
 							binary.clear();
+							state = 'b';
 						}
+						break;
+
+					case 'b':
+						if(byte != '\x1f'){
+							binary.push_back(byte);
+						}
+						else{
+							next = new FetchNext(&binary);
+							binary.clear();
+							state = 'c';
+						}
+						break;
+
+					case 'd':
+						delete[] word;
+						delete[] next;
 						break;
 				}
 				// switch(state){
