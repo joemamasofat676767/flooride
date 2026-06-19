@@ -5,12 +5,18 @@
 #include <vector>
 #include <sstream>
 #include <array>
+#include <variant>
 
 template<typename type>
 struct mat{
 	type word;
 	std::vector<type> next;
-	std::vector<float> embedding;
+	std::vector<float> embeddings;
+	mat(type w, std::vector<type> n, std::vector<float> e){
+		word = w;
+		next = n;
+		embeddings = e;
+	}
 };
 
 // these fetch functions are for binary mode
@@ -23,8 +29,8 @@ unsigned char* FetchWord(std::vector<unsigned char>* binary){
 	}
 	return result;
 }
-unsigned char* FetchWord(std::vector<unsigned char>* binary){
-	std::vector<unsigned char*>* result = new std::vector<unsigned char*>();
+std::vector<unsigned char*>* FetchNext(std::vector<unsigned char>* binary){
+	std::vector<unsigned char*> result;
 	std::vector<unsigned char> word;
 	for(const auto& byte : *binary){
 		if(byte != '\0'){
@@ -37,9 +43,23 @@ unsigned char* FetchWord(std::vector<unsigned char>* binary){
 	}
 	return &result;
 }
+std::vector<unsigned char*>* FetchEmbeddings(std::vector<unsigned char>* binary){
+	std::vector<unsigned char*> result;
+	std::vector<unsigned char> embedding;
+	for(const auto& byte : *binary){
+		if(byte != ','){
+			embedding.push_back(byte);
+		}
+		else{
+			result.push_back(FetchWord(&embedding));
+			embedding.clear();
+		}
+	}
+	return &result;
+}
 
 int main(){
-	std::vector<mat*> mats;
+	auto* mats = new std::variant<std::vector<mat<char[]>*>*, std::vector<mat<std::string>*>*>();
 	std::string path = "file.flrd";
 	bool report = true;
 	
@@ -54,7 +74,13 @@ int main(){
 	if(contents.size() > 0 && file_in.is_open()){
 		JesusByte = contents[0];
 		mode = (JesusByte >> 7) & 1;
-	 	dims= JesusByte & 0b01111111;
+		if(mode){
+			mats = new std::vector<mat<char[]>*>();
+		}
+		else{
+			mats = new std::vector<mat<std::string>*>();
+		} 
+	 	dims = JesusByte & 0b01111111;
 		if(!mode){
 			contents = contents.substr(1);
 			std::string line;
@@ -79,8 +105,8 @@ int main(){
 					i++;
 				}
 				std::string word_name = line.substr(0, line.find('['));
-				mat* word_temp = new mat{word_name, next, embeddings}();
-				mats.push_back(word_temp);
+				mat<std::string>* MatObj_temp = new (mat<std::string>(word_name, next, embeddings))();
+				*mats.push_back(MatObj_temp);
 				contents += "\n" + line;
 			}
 		}
@@ -92,10 +118,11 @@ int main(){
 			unsigned char* byte;
 			unsigned char* word;
 			unsigned char* next;
+			unsigned char* embeddings;
 			while(file_in.get(byte)){
 				switch(state){
 					case 'a':
-						if(byte != '\x1f'){
+						if(*byte != 0x1F){
 							binary.push_back(byte);
 						}
 						else{
@@ -106,62 +133,36 @@ int main(){
 						break;
 
 					case 'b':
-						if(byte != '\x1f'){
+						if(*byte != 0x1F){
 							binary.push_back(byte);
 						}
 						else{
-							next = new FetchNext(&binary);
+							next = FetchNext(&binary);
 							binary.clear();
 							state = 'c';
 						}
 						break;
 
+					case 'c':
+						if(*byte != 0x1F){
+							binary.push_back(byte);
+						}
+						else{
+							embeddings = FetchEmbeddings(&binary);
+							binary.clear();
+							state = 'd';
+						}
+						break;
+
 					case 'd':
+						mat<char[]>* MatObj_temp = new (mat<char[]>(word, next, embeddings))();
+						*mats.push_back(MatObj_temp);
+						state = 'a';
 						delete[] word;
-						delete[] next;
+						delete next;
+						delete embeddings;
 						break;
 				}
-				// switch(state){
-				// 	case 'a':
-				// 		word = new unsigned char[(short)byte]; 
-				// 		state = 'b';
-				// 		break;
-
-				// 	case 'b':
-				// 		if(i < sizeof(word)){
-				// 			word += (char)byte;
-				// 			i++;
-				// 		}
-				// 		else{
-				// 			i = 0;
-				// 			state = 'c';
-				// 		}
-				// 		break;
-
-				// 	case 'c':
-				// 		next_length = new unsigned char[(short)byte]; 
-				// 		state = 'd';
-				// 		break;
-
-				// 	case 'd':
-				// 		if(i < sizeof(next_length)){
-				// 			next_length += (char)byte;
-				// 			i++;
-				// 		}
-				// 		else{
-				// 			i = 0;
-				// 			state = 'e';
-				// 		}
-				// 		break;
-					
-				// 	case 'e':
-						
-				// 		break;
-
-				// 	case 'f':
-						
-				// 		break;
-				// }
 			}
 		}
 	}
@@ -177,7 +178,7 @@ int main(){
 	std::cout << std::bitset<8>(JesusByte) << "\n";
 	std::cout << mode << " | " << (int)dims << "\n";
 	std::cout << contents << "\n";
-	for(const auto& thing : mats){
+	for(const auto& thing : *mats){
 		std::cout << thing << ":";
 		std::cout << thing->word << ' ';
 		for(const auto& next : thing->next){
@@ -201,5 +202,6 @@ int main(){
 	file_out << contents;
 	file_out.flush();
 	file_out.close();
+	delete mats;
 	return 0;
 }
