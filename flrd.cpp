@@ -58,8 +58,13 @@ std::vector<unsigned char*>* FetchEmbeddings(std::vector<unsigned char>* binary)
 	return &result;
 }
 
+template<typename type>
+std::vector<mat<type>*>* MkMat(){
+	std::vector<mat<type>*>* mats = new std::vector<mat<type>*>();
+	return mats;
+}
+
 int main(){
-	auto* mats = new std::variant<std::vector<mat<char[]>*>*, std::vector<mat<std::string>*>*>();
 	std::string path = "file.flrd";
 	bool report = true;
 	
@@ -71,16 +76,13 @@ int main(){
 	bool mode;
 	int dims;
 	unsigned char JesusByte;
-	if(contents.size() > 0 && file_in.is_open()){
+	if(contents.size() > 0  && file_in.is_open()){
 		JesusByte = contents[0];
 		mode = (JesusByte >> 7) & 1;
-		if(mode){
-			mats = new std::vector<mat<char[]>*>();
-		}
-		else{
-			mats = new std::vector<mat<std::string>*>();
-		} 
 	 	dims = JesusByte & 0b01111111;
+	}
+	void* mats = (mode) ? MkMat<char*>() : MkMat<std::string>();
+	if(contents.size() > 0 && file_in.is_open()){
 		if(!mode){
 			contents = contents.substr(1);
 			std::string line;
@@ -105,8 +107,8 @@ int main(){
 					i++;
 				}
 				std::string word_name = line.substr(0, line.find('['));
-				mat<std::string>* MatObj_temp = new (mat<std::string>(word_name, next, embeddings))();
-				*mats.push_back(MatObj_temp);
+				mat<std::string>* MatObj_temp = new mat<std::string>(word_name, next, embeddings);
+				mats->push_back(&MatObj_temp);
 				contents += "\n" + line;
 			}
 		}
@@ -155,8 +157,8 @@ int main(){
 						break;
 
 					case 'd':
-						mat<char[]>* MatObj_temp = new (mat<char[]>(word, next, embeddings))();
-						*mats.push_back(MatObj_temp);
+						mat<char[]>* MatObj_temp = new mat<char[]>(word, next, embeddings);
+						mats->push_back(&MatObj_temp);
 						state = 'a';
 						delete[] word;
 						delete next;
@@ -202,6 +204,5 @@ int main(){
 	file_out << contents;
 	file_out.flush();
 	file_out.close();
-	delete mats;
 	return 0;
 }
