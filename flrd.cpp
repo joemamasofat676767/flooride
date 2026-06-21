@@ -6,6 +6,7 @@
 #include <sstream>
 #include <array>
 #include <variant>
+#include <cstring>
 
 template<typename type>
 struct mat{
@@ -13,27 +14,32 @@ struct mat{
 	std::vector<type> next;
 	std::vector<float> embeddings;
 	mat(type w, std::vector<type> n, std::vector<float> e){
-		word = w;
+		if(type == (unsigned char*)){
+			word = new unsigned char[w.size()]{w};
+		}
+		else{
+			word = w;
+		}
 		next = n;
 		embeddings = e;
 	}
 };
 
 // these fetch functions are for binary mode
-unsigned char* FetchWord(std::vector<unsigned char>* binary){
+unsigned char* FetchWord(std::vector<unsigned char*>* binary){
 	unsigned char* result = new unsigned char[binary->size()]();
 	short i = 0;
 	for(const auto& byte : *binary){
-		result[i] = byte;
+		result[i] = *byte;
 		i++;
 	}
 	return result;
 }
-std::vector<unsigned char*>* FetchNext(std::vector<unsigned char>* binary){
+std::vector<unsigned char*>* FetchNext(std::vector<unsigned char*>* binary){
 	std::vector<unsigned char*> result;
-	std::vector<unsigned char> word;
+	std::vector<unsigned char*> word;
 	for(const auto& byte : *binary){
-		if(byte != '\0'){
+		if(*byte != 0){
 			word.push_back(byte);
 		}
 		else{
@@ -43,25 +49,21 @@ std::vector<unsigned char*>* FetchNext(std::vector<unsigned char>* binary){
 	}
 	return &result;
 }
-std::vector<unsigned char*>* FetchEmbeddings(std::vector<unsigned char>* binary){
-	std::vector<unsigned char*> result;
-	std::vector<unsigned char> embedding;
+std::vector<float>* FetchEmbeddings(std::vector<unsigned char*>* binary){
+	std::vector<float> result;
+	std::vector<unsigned char*> embedding_raw;
+	float embedding;
 	for(const auto& byte : *binary){
-		if(byte != ','){
-			embedding.push_back(byte);
+		if(*byte != ','){
+			embedding_raw.push_back(byte);
 		}
 		else{
-			result.push_back(FetchWord(&embedding));
-			embedding.clear();
+			std::memcpy(&embedding, FetchWord(&embedding_raw), sizeof(float));
+			result.push_back(embedding);
+			embedding_raw.clear();
 		}
 	}
 	return &result;
-}
-
-template<typename type>
-std::vector<mat<type>*>* MkMat(){
-	std::vector<mat<type>*>* mats = new std::vector<mat<type>*>();
-	return mats;
 }
 
 int main(){
@@ -76,14 +78,17 @@ int main(){
 	bool mode;
 	int dims;
 	unsigned char JesusByte;
+	std::vector<mat<std::vector<unsigned char>>*> mats_bin;
+	std::vector<mat<std::string>*> mats_txt;
+	void* mats = nullptr;
 	if(contents.size() > 0  && file_in.is_open()){
 		JesusByte = contents[0];
 		mode = (JesusByte >> 7) & 1;
 	 	dims = JesusByte & 0b01111111;
 	}
-	void* mats = (mode) ? MkMat<char*>() : MkMat<std::string>();
 	if(contents.size() > 0 && file_in.is_open()){
 		if(!mode){
+			mats = &mats_txt;
 			contents = contents.substr(1);
 			std::string line;
 			while(std::getline(file_in, line)){
@@ -108,20 +113,23 @@ int main(){
 				}
 				std::string word_name = line.substr(0, line.find('['));
 				mat<std::string>* MatObj_temp = new mat<std::string>(word_name, next, embeddings);
-				mats->push_back(&MatObj_temp);
+				(*(std::vector<mat<std::string>*>*)mats).push_back(MatObj_temp);
 				contents += "\n" + line;
 			}
 		}
 		else{
-			file_in.seekg(1, std::ios::binary);
+			file_in.close();
+			std::ifstream file_in(path, std::ios::binary);
+			mats = &mats_bin;
+			file_in.seekg(1);
 			/* a = fetching word, b = fetching next words, c = fetching embeddings, d = create mat */
 			char state = 'a';
-			std::vector<unsigned char> binary;
+			std::vector<unsigned char*> binary;
 			unsigned char* byte;
 			unsigned char* word;
-			unsigned char* next;
-			unsigned char* embeddings;
-			while(file_in.get(byte)){
+			std::vector<unsigned char*>* next;
+			std::vector<float> embeddings;
+			while((file_in.peek() != EOF) ? (*byte = file_in.get()) : 0){
 				switch(state){
 					case 'a':
 						if(*byte != 0x1F){
@@ -150,15 +158,17 @@ int main(){
 							binary.push_back(byte);
 						}
 						else{
-							embeddings = FetchEmbeddings(&binary);
+							for(const auto& embedding: *FetchEmbeddings(&binary)){
+								embeddings.push_back(embedding);
+							}
 							binary.clear();
 							state = 'd';
 						}
 						break;
 
 					case 'd':
-						mat<char[]>* MatObj_temp = new mat<char[]>(word, next, embeddings);
-						mats->push_back(&MatObj_temp);
+						mat<unsigned char*>* MatObj_temp = new mat<unsigned char*>(word, next, embeddings);
+						(*(std::vector<mat<std::vector<unsigned char>>*>*)mats).push_back(MatObj_temp);
 						state = 'a';
 						delete[] word;
 						delete next;
