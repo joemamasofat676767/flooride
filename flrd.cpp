@@ -7,15 +7,18 @@
 #include <array>
 #include <variant>
 #include <cstring>
+#include <type_traits>
 
 template<typename type>
 struct mat{
 	type word;
 	std::vector<type> next;
 	std::vector<float> embeddings;
+
 	mat(type w, std::vector<type> n, std::vector<float> e){
-		if(type == (unsigned char*)){
-			word = new unsigned char[w.size()]{w};
+		if constexpr (std::is_same_v<type, unsigned char*>){
+			word = new unsigned char[sizeof(w)]();
+			std::memcpy(word, w, sizeof(w));
 		}
 		else{
 			word = w;
@@ -26,20 +29,20 @@ struct mat{
 };
 
 // these fetch functions are for binary mode
-unsigned char* FetchWord(std::vector<unsigned char*>* binary){
+unsigned char* FetchWord(std::vector<unsigned char>* binary){
 	unsigned char* result = new unsigned char[binary->size()]();
 	short i = 0;
 	for(const auto& byte : *binary){
-		result[i] = *byte;
+		result[i] = byte;
 		i++;
 	}
 	return result;
 }
-std::vector<unsigned char*>* FetchNext(std::vector<unsigned char*>* binary){
+std::vector<unsigned char*> FetchNext(std::vector<unsigned char>* binary){
 	std::vector<unsigned char*> result;
-	std::vector<unsigned char*> word;
+	std::vector<unsigned char> word;
 	for(const auto& byte : *binary){
-		if(*byte != 0){
+		if(byte != 0){
 			word.push_back(byte);
 		}
 		else{
@@ -47,14 +50,14 @@ std::vector<unsigned char*>* FetchNext(std::vector<unsigned char*>* binary){
 			word.clear();
 		}
 	}
-	return &result;
+	return result;
 }
-std::vector<float>* FetchEmbeddings(std::vector<unsigned char*>* binary){
+std::vector<float> FetchEmbeddings(std::vector<unsigned char>* binary){
 	std::vector<float> result;
-	std::vector<unsigned char*> embedding_raw;
+	std::vector<unsigned char> embedding_raw;
 	float embedding;
 	for(const auto& byte : *binary){
-		if(*byte != ','){
+		if(byte != 0){
 			embedding_raw.push_back(byte);
 		}
 		else{
@@ -63,30 +66,29 @@ std::vector<float>* FetchEmbeddings(std::vector<unsigned char*>* binary){
 			embedding_raw.clear();
 		}
 	}
-	return &result;
+	return result;
 }
 
 int main(){
 	std::string path = "file.flrd";
 	bool report = true;
 	
-	std::ifstream file_in(path);
+	std::ifstream file_in(path, std::ios::binary);
 	std::string contents;
-	std::getline(file_in, contents);
 	
 	// 1 = binary, 0 = text
 	bool mode;
 	int dims;
 	unsigned char JesusByte;
+	file_in.read(reinterpret_cast<char*>(&JesusByte), 1);
 	std::vector<mat<std::vector<unsigned char>>*> mats_bin;
 	std::vector<mat<std::string>*> mats_txt;
 	void* mats = nullptr;
-	if(contents.size() > 0  && file_in.is_open()){
-		JesusByte = contents[0];
+	if(file_in.is_open()){
 		mode = (JesusByte >> 7) & 1;
-	 	dims = JesusByte & 0b01111111;
-	}
-	if(contents.size() > 0 && file_in.is_open()){
+		dims = JesusByte & 0b01111111;
+		std::cout << "Jesus byte: 0x" << std::hex << (int)JesusByte << std::dec << std::endl;
+		std::cout << "Mode: " << mode << std::endl;
 		if(!mode){
 			mats = &mats_txt;
 			contents = contents.substr(1);
@@ -118,21 +120,21 @@ int main(){
 			}
 		}
 		else{
-			file_in.close();
-			std::ifstream file_in(path, std::ios::binary);
 			mats = &mats_bin;
 			file_in.seekg(1);
 			/* a = fetching word, b = fetching next words, c = fetching embeddings, d = create mat */
 			char state = 'a';
-			std::vector<unsigned char*> binary;
-			unsigned char* byte;
+			std::vector<unsigned char> binary;
+			unsigned char byte;
 			unsigned char* word;
-			std::vector<unsigned char*>* next;
+			std::vector<unsigned char*> next;
 			std::vector<float> embeddings;
-			while((file_in.peek() != EOF) ? (*byte = file_in.get()) : 0){
+			int ch;
+			while((file_in.peek() != EOF) ? (ch = file_in.get()) : 0){
+				byte = static_cast<unsigned char>(ch);
 				switch(state){
 					case 'a':
-						if(*byte != 0x1F){
+						if(byte != 0x1F){
 							binary.push_back(byte);
 						}
 						else{
@@ -143,7 +145,7 @@ int main(){
 						break;
 
 					case 'b':
-						if(*byte != 0x1F){
+						if(byte != 0x1F){
 							binary.push_back(byte);
 						}
 						else{
@@ -154,11 +156,11 @@ int main(){
 						break;
 
 					case 'c':
-						if(*byte != 0x1F){
+						if(byte != 0x1F){
 							binary.push_back(byte);
 						}
 						else{
-							for(const auto& embedding: *FetchEmbeddings(&binary)){
+							for(const auto& embedding: FetchEmbeddings(&binary)){
 								embeddings.push_back(embedding);
 							}
 							binary.clear();
@@ -168,11 +170,9 @@ int main(){
 
 					case 'd':
 						mat<unsigned char*>* MatObj_temp = new mat<unsigned char*>(word, next, embeddings);
-						(*(std::vector<mat<std::vector<unsigned char>>*>*)mats).push_back(MatObj_temp);
+						(*(std::vector<mat<unsigned char*>*>*)mats).push_back(MatObj_temp);
 						state = 'a';
 						delete[] word;
-						delete next;
-						delete embeddings;
 						break;
 				}
 			}
@@ -190,13 +190,13 @@ int main(){
 	std::cout << std::bitset<8>(JesusByte) << "\n";
 	std::cout << mode << " | " << (int)dims << "\n";
 	std::cout << contents << "\n";
-	for(const auto& thing : *mats){
+	for(const auto& thing : *(std::vector<mat<unsigned char*>*>*)mats){
 		std::cout << thing << ":";
-		std::cout << thing->word << ' ';
+		std::cout << reinterpret_cast<const char*>(thing->word) << "\n";
 		for(const auto& next : thing->next){
 			std::cout << next << ' ';
 		}
-		for(const auto& embedding : thing->embedding){
+		for(const auto& embedding : thing->embeddings){
 			std::cout << embedding  << ",";
 		}
 		std::cout << "\n";
@@ -209,10 +209,34 @@ int main(){
 		std::cout << "text mode";
 	}
 
-	std::ofstream file_out(path, std::ios::binary);
-	file_out.write(reinterpret_cast<char*>(&JesusByte), 1);
-	file_out << contents;
+	if(mode){
+		std::ofstream file_out(path, std::ios::binary);
+		file_out.write(reinterpret_cast<char*>(&JesusByte), 1);
+		for(const auto& data : *(std::vector<mat<unsigned char*>*>*)mats){
+			file_out.write(data->word, sizeof(data->word));
+			short NextItemSize = sizeof(data->next);
+			for(const auto& NextWord : data->next){
+				file_out.write(reinterpret_cast<const char*>(NextWord), sizeof(NextWord));
+				NextItemSize != 0 ? file_out.write(0, 1) : 0;
+				NextItemSize--;
+			}
+			file_out.write(0x1F, 1);
+			short i = 0
+			for(const auto& embedding : data->embeddings){
+				file_out.write(embedding, sizeof(float));
+				i != dims ? file_out.write(0, 1) : 0;
+				i++;
+			}
+			file_out.write(0x1F, 1);
+		}
+	}
+	else{
+		std::ofstream file_out(path);
+		file_out.write(reinterpret_cast<char*>(&JesusByte), 1);
+		file_out.write(contents.data(), contents.size());
+	}
 	file_out.flush();
 	file_out.close();
+
 	return 0;
 }
