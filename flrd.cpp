@@ -44,24 +44,26 @@ std::vector<std::vector<unsigned char>> FetchNext(std::vector<unsigned char>* bi
 			word.push_back(byte);
 		}
 		else{
-			result.push_back(FetchWord(&word));
+
+			if(!word.empty()){
+				result.push_back(FetchWord(&word));
+			}
+
 			word.clear();
 		}
 	}
 	return result;
 }
 std::vector<float> FetchEmbeddings(std::vector<unsigned char>* binary){
-	short chunk_i = 0;
 	std::vector<float> result;
 	std::vector<unsigned char> embedding_raw;
 	float embedding;
 	for(const auto& byte : *binary){
-		if(chunk_i != 4){
+		if(embedding_raw.size() != 4){
 			embedding_raw.push_back(byte);
 		}
 		else{
-			std::vector<unsigned char> embedding_temp = FetchWord(&embedding_raw);
-			std::memcpy(&embedding, &embedding_temp, sizeof(float));
+			std::memcpy(&embedding, embedding_raw.data(), sizeof(float));
 			result.push_back(embedding);
 			embedding_raw.clear();
 		}
@@ -126,9 +128,8 @@ int main(){
 			std::vector<unsigned char> word;
 			std::vector<std::vector<unsigned char>> next;
 			std::vector<float> embeddings;
-			unsigned char[sizeof(float)] chunk;
 			int ch;
-			while((ch = file_in.get()) != EOF){
+			while((ch = file_in.get()) != EOF && 0x4){
 				byte = static_cast<unsigned char>(ch);
 				switch(state){
 					case 'a':
@@ -224,11 +225,12 @@ int main(){
 		std::ofstream file_out(path, std::ios::binary);
 		file_out.write(reinterpret_cast<const char*>(&JesusByte), 1);
 		for(const auto& data : mats_bin){
-			file_out.write(reinterpret_cast<const char*>((data->word).data()), sizeof(data->word));
+			file_out.write(reinterpret_cast<const char*>(data->word.data()), data->word.size());
+			file_out.put(0x1F);
 
 			short NextItemSize = sizeof(data->next);
 			for(const auto& NextWord : data->next){
-				file_out.write(reinterpret_cast<const char*>(NextWord.data()), sizeof(NextWord));
+				file_out.write(reinterpret_cast<const char*>(NextWord.data()), NextWord.size());
 				if(NextItemSize != 0){
 					file_out.put(0);
 				}
@@ -239,13 +241,14 @@ int main(){
 			short i = 0;
 			for(const auto& embedding : data->embeddings){
 				file_out.write(reinterpret_cast<const char*>(&embedding), sizeof(float));
-				if(i != dims){
+				if(i == dims){
 					file_out.put(0);
 				}
 				i++;
 			}
 			file_out.put(0x1F);
 		}
+		file_out.put(0x4);
 		file_out.flush();
 		file_out.close();
 	}
