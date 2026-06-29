@@ -7,7 +7,6 @@
 #include <array>
 #include <variant>
 #include <cstring>
-#include <type_traits>
 #include <tuple>
 #include <algorithm>
 
@@ -85,7 +84,6 @@ class mat{
 						byte = static_cast<unsigned char>(ch);
 						switch(state){
 							case 'a':
-							std::cout << "'a': " << (int)byte << "\n";
 							if(byte == 0){
 								break;
 							}
@@ -97,11 +95,9 @@ class mat{
 									binary.clear();
 									state = 'b';
 								}
-								std::cout << "reached state a\n";
 								break;
 								
 								case 'b':
-								std::cout << "'b': " << (int)byte << "\n";
 								if(byte != 0x1F){
 									binary.push_back(byte);
 								}
@@ -110,11 +106,9 @@ class mat{
 									binary.clear();
 									state = 'c';
 								}
-								std::cout << "reached state b\n";
 								break;
 								
 								case 'c':
-								std::cout << "'c': " << (int)byte << "\n";
 								if(byte != 0x1F){
 									binary.push_back(byte);
 								}
@@ -125,14 +119,12 @@ class mat{
 									binary.clear();
 									state = 'd';
 								}
-								std::cout << "reached state c\n";
 								break;
 							
 								case 'd':
 								mat<std::vector<unsigned char>>* MatObj_temp = new mat<std::vector<unsigned char>>(word, next, embeddings);
 								mats_bin.push_back(MatObj_temp);
 								binary.push_back(byte);
-								std::cout << "reached state d\n";
 								state = 'a';
 								embeddings.clear();
 								break;
@@ -186,19 +178,16 @@ class mat{
 			return {dims, JesusByte, mode, report};
 		}
 		static bool here(const std::string& target){
-			return (mode) 
-   			 ? (std::find_if(mats_bin.begin(), mats_bin.end(), [&](const auto& word) { return word.word == target; }) != mats_bin.end()) 
-    		 : (std::find_if(mats_txt.begin(), mats_txt.end(), [&](const auto& word) { return word.word == target; }) != mats_txt.end());
+			if(mode){
+				return (std::find_if(mats_bin.begin(), mats_bin.end(), [&](const auto& word){return std::string(word->word.begin(), word->word.end()) == target;}) != mats_bin.end());
+			}
+			else{
+				return (std::find_if(mats_txt.begin(), mats_txt.end(), [&](const auto& word){return word->word == target;}) != mats_txt.end());
+			}
 		}
 		
 		mat(type w, std::vector<type> n, std::vector<float> e){
-			if(std::is_same_v<type, std::vector<unsigned char>>){
-				word = new unsigned char[w.size()]();
-				std::memcpy(word, w, w.size());
-			}
-			else{
-				word = w;
-			}
+			word = w;
 			next = n;
 			embeddings = e;
 		}
@@ -257,7 +246,6 @@ int main(){
 	std::cout << mat<std::string>::here("obama") << ' ';
 	std::tuple inspected = mat<std::string>::inspect();
 	std::cout << std::get<0>(inspected) << std::get<1>(inspected) << std::get<2>(inspected) << std::get<3>(inspected);
-
 	std::cout << std::bitset<8>(mat<std::string>::JesusByte) << "\n";
 	std::cout << mat<std::string>::mode << " | " << (int)mat<std::string>::dims << "\n";
 	std::cout << mat<std::string>::contents << "\n";
