@@ -16,10 +16,12 @@ std::vector<float> FetchEmbeddings(std::vector<unsigned char>* binary);
 
 template<typename type>
 class mat{
-	public:
+	private:
 	type word;
 	std::vector<type> next;
 	std::vector<float> embeddings;
+
+	public:
 	
 	inline static short dims;
 	inline static unsigned char JesusByte;
@@ -174,18 +176,70 @@ class mat{
 				file_out.close();
 			}
 		}
-		static std::tuple<short, unsigned char, bool, bool> inspect(){
-			return {dims, JesusByte, mode, report};
-		}
+		static std::tuple<short, unsigned char, bool, bool> inspect(){return {dims, JesusByte, mode, report};}
 		static bool here(const std::string& target){
 			if(mode){
-				return (std::find_if(mats_bin.begin(), mats_bin.end(), [&](const auto& word){return std::string(word->word.begin(), word->word.end()) == target;}) != mats_bin.end());
+				return (std::find_if(mats_bin.begin(), mats_bin.end(), 
+				 [&](const auto& word){return std::string(word->word.begin(), word->word.end()) == target;}) != mats_bin.end());
 			}
 			else{
-				return (std::find_if(mats_txt.begin(), mats_txt.end(), [&](const auto& word){return word->word == target;}) != mats_txt.end());
+				return (std::find_if(mats_txt.begin(), mats_txt.end(),
+				 [&](const auto& word){return word->word == target;}) != mats_txt.end());
 			}
 		}
-		
+		static void trash(const std::string& path){
+			std::ofstream file_out(path);
+			file_out.close();
+		}
+	// 	inline static short dims;
+	// inline static unsigned char JesusByte;
+	// inline static bool mode;
+	// inline static bool report;
+	// inline static std::vector<mat<std::vector<unsigned char>>*> mats_bin;
+	// inline static std::vector<mat<std::string>*> mats_txt;
+	// inline static std::string contents;
+		static void paint(std::string target, std::string assign){
+			switch(target){
+				case "dims":
+					for(const auto& word : ((mode) ? mats_bin : mats_txt)){
+						word->sow();
+					}
+					break;
+				case "":
+
+					break;
+				case "":
+
+					break;
+				case "":
+
+					break;
+				case "":
+
+					break;
+				case "":
+
+					break;
+				case "":
+
+					break;
+			}
+		}
+
+		std::tuple<type, std::vector<std::string>, std::vector<float>> inspect(){return {this->word, this->next, this->embeddings};}
+		type GetWord(){return this->word;}
+		std::vector<std::string> GetNext(){return this->next;}
+		std::vector<float> GetEmbeddings(){return this->embeddings;}
+		void restyle(std::string target , char attr, std::string assign, short index = -1){
+			if(!mat<std::string>::here(target)){return;}
+
+			if(attr == 'w'){this->word = assign;}
+			else if(attr == 'n'){(index != -1) ? this->next[index] = target : return;}
+			else if(attr == 'e'){(index != -1) ? this->embeddings[index] = reinterpret_cast<short>(target) : return;}
+			else{return;}
+		}
+		void sow(std::string append){this->next.pushback(append);}
+		void trim(short index){this->next.erase(tthis-next.begin() + index);}
 		mat(type w, std::vector<type> n, std::vector<float> e){
 			word = w;
 			next = n;
@@ -243,12 +297,12 @@ std::vector<float> FetchEmbeddings(std::vector<unsigned char>* binary){
 int main(){
 
 	mat<std::string>::lay("file.flrd");
-	std::cout << mat<std::string>::here("obama") << ' ';
+	std::cout << '\n' << mat<std::string>::here("obama") << ' ';
 	std::tuple inspected = mat<std::string>::inspect();
-	std::cout << std::get<0>(inspected) << std::get<1>(inspected) << std::get<2>(inspected) << std::get<3>(inspected);
-	std::cout << std::bitset<8>(mat<std::string>::JesusByte) << "\n";
-	std::cout << mat<std::string>::mode << " | " << (int)mat<std::string>::dims << "\n";
-	std::cout << mat<std::string>::contents << "\n";
+	std::cout << '\n' << std::get<0>(inspected) << std::get<1>(inspected) << std::get<2>(inspected) << std::get<3>(inspected);
+	std::cout << '\n' << std::bitset<8>(mat<std::string>::JesusByte) << "\n";
+	std::cout << '\n' << mat<std::string>::mode << " | " << (int)mat<std::string>::dims << "\n";
+	std::cout << '\n' << mat<std::string>::contents << "\n";
 	for(const auto& thing : mat<std::string>::mats_bin){
 		std::cout << thing << ":";
 		std::cout << reinterpret_cast<const char*>((thing->word).data()) << "\n";
