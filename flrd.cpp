@@ -149,17 +149,17 @@ class mat{
 				std::ofstream file_out(path, std::ios::binary);
 				file_out.write(reinterpret_cast<const char*>(&JesusByte), 1);
 				for(const auto& data : mats_bin){
-					file_out.write(reinterpret_cast<const char*>(data->word.data()), data->word.size());
+					file_out.write(reinterpret_cast<const char*>(data->GetWord().data()), data->GetWord().size());
 					file_out.put(0x1F);
 					
-					for(const auto& NextWord : data->next){
+					for(const auto& NextWord : data->GetNext()){
 						file_out.write(reinterpret_cast<const char*>(NextWord.data()), NextWord.size());
 						file_out.put(0);
 					}
 					file_out.put(0x1F);
 					
 					short i = 0;
-					for(const auto& embedding : data->embeddings){
+					for(const auto& embedding : data->GetEmbeddings()){
 						file_out.write(reinterpret_cast<const char*>(&embedding), sizeof(float));
 					}
 					file_out.put(0x1F);
@@ -180,66 +180,31 @@ class mat{
 		static bool here(const std::string& target){
 			if(mode){
 				return (std::find_if(mats_bin.begin(), mats_bin.end(), 
-				 [&](const auto& word){return std::string(word->word.begin(), word->word.end()) == target;}) != mats_bin.end());
+				 [&](const auto& word){return std::string(word->GetWord().begin(), word->GetWord().end()) == target;}) != mats_bin.end());
 			}
 			else{
 				return (std::find_if(mats_txt.begin(), mats_txt.end(),
-				 [&](const auto& word){return word->word == target;}) != mats_txt.end());
+				 [&](const auto& word){return word->GetWord() == target;}) != mats_txt.end());
 			}
 		}
 		static void trash(const std::string& path){
 			std::ofstream file_out(path);
 			file_out.close();
 		}
-	// 	inline static short dims;
-	// inline static unsigned char JesusByte;
-	// inline static bool mode;
-	// inline static bool report;
-	// inline static std::vector<mat<std::vector<unsigned char>>*> mats_bin;
-	// inline static std::vector<mat<std::string>*> mats_txt;
-	// inline static std::string contents;
-		static void paint(std::string target, std::string assign){
-			switch(target){
-				case "dims":
-					for(const auto& word : ((mode) ? mats_bin : mats_txt)){
-						word->sow();
-					}
-					break;
-				case "":
 
-					break;
-				case "":
-
-					break;
-				case "":
-
-					break;
-				case "":
-
-					break;
-				case "":
-
-					break;
-				case "":
-
-					break;
-			}
-		}
-
-		std::tuple<type, std::vector<std::string>, std::vector<float>> inspect(){return {this->word, this->next, this->embeddings};}
+		std::tuple<type, std::vector<std::string>, std::vector<float>> see(){return {this->word, this->next, this->embeddings};}
 		type GetWord(){return this->word;}
-		std::vector<std::string> GetNext(){return this->next;}
+		std::vector<type> GetNext(){return this->next;}
 		std::vector<float> GetEmbeddings(){return this->embeddings;}
-		void restyle(std::string target , char attr, std::string assign, short index = -1){
-			if(!mat<std::string>::here(target)){return;}
-
+		void restyle(char attr, std::string assign, short index = -1){
 			if(attr == 'w'){this->word = assign;}
-			else if(attr == 'n'){(index != -1) ? this->next[index] = target : return;}
-			else if(attr == 'e'){(index != -1) ? this->embeddings[index] = reinterpret_cast<short>(target) : return;}
+			else if(attr == 'n' && index != -1){this->next[index] = assign;}
+			else if(attr == 'e'&& index != -1){this->embeddings[index] = static_cast<short>(std::stoi(assign));}
 			else{return;}
 		}
-		void sow(std::string append){this->next.pushback(append);}
-		void trim(short index){this->next.erase(tthis-next.begin() + index);}
+		void sow(std::string append){this->next.push_back(append);}
+		void trim(short index){this->next.erase(this->next.begin() + index);}
+
 		mat(type w, std::vector<type> n, std::vector<float> e){
 			word = w;
 			next = n;
@@ -282,6 +247,7 @@ std::vector<float> FetchEmbeddings(std::vector<unsigned char>* binary){
 	std::vector<float> result;
 	std::vector<unsigned char> embedding_raw;
 	float embedding;
+	std::cout << "FetchEmbeddings binary size: " << binary->size() << std::endl;
 	for(const auto& byte : *binary){	
 		std::cout << std::hex << (int)byte << ' ';
 		embedding_raw.push_back(byte);
@@ -291,6 +257,13 @@ std::vector<float> FetchEmbeddings(std::vector<unsigned char>* binary){
 			embedding_raw.clear();
 		}
 	}
+	embedding_raw.clear();
+	short diff = mat<std::string>::dims - result.size();
+	if(diff != 0){
+		for(short _ = 0 ; _ < diff ; _++){
+			result.push_back(0.0f);
+		}
+	}
 	return result;
 }
 
@@ -298,21 +271,21 @@ int main(){
 
 	mat<std::string>::lay("file.flrd");
 	std::cout << '\n' << mat<std::string>::here("obama") << ' ';
-	std::tuple inspected = mat<std::string>::inspect();
+	std::tuple<short, unsigned char, bool, bool> inspected = mat<std::string>::inspect();
 	std::cout << '\n' << std::get<0>(inspected) << std::get<1>(inspected) << std::get<2>(inspected) << std::get<3>(inspected);
 	std::cout << '\n' << std::bitset<8>(mat<std::string>::JesusByte) << "\n";
 	std::cout << '\n' << mat<std::string>::mode << " | " << (int)mat<std::string>::dims << "\n";
 	std::cout << '\n' << mat<std::string>::contents << "\n";
 	for(const auto& thing : mat<std::string>::mats_bin){
 		std::cout << thing << ":";
-		std::cout << reinterpret_cast<const char*>((thing->word).data()) << "\n";
-		for(const auto& next : thing->next){
+		std::cout << reinterpret_cast<const char*>(thing->GetWord().data()) << "\n";
+		for(const auto& next : thing->GetNext()){
 			for(const auto& ch : next){
 				std::cout << ch;
 			}
 			std::cout << ",";
 		}
-		for(const auto& embedding : thing->embeddings){
+		for(const auto& embedding : thing->GetEmbeddings()){
 			std::cout << embedding << ",";
 		}
 		std::cout << "\n";
