@@ -152,11 +152,11 @@ class mat{
 				std::ofstream file_out(path, std::ios::binary);
 				file_out.write(reinterpret_cast<const char*>(&JesusByte), 1);
 				for(const auto& word : mats){
-					file_out.write(reinterpret_cast<const char*>(std::visit([&](const auto& data){return data.data();}, word->GetWord()),
-					 std::visit([&](const auto& data){return data.size();}, word->GetWord())));
+					file_out.write(reinterpret_cast<const char*>(std::visit([&](const auto& data){return data.data();}, word->GetWord())),
+					 std::visit([&](const auto& data){return data.size();}, word->GetWord()));
 					file_out.put(0x1F);
 					
-					for(const auto& NextWord : word->GetNext()){
+					for(const auto& NextWord : std::visit([&](const auto& data){return data;}, word->GetNext())){
 						file_out.write(reinterpret_cast<const char*>(NextWord.data()), NextWord.size());
 						file_out.put(0);
 					}
@@ -183,12 +183,13 @@ class mat{
 		static std::tuple<short, unsigned char, bool, bool> inspect(){return {dims, JesusByte, mode, report};}
 		static bool here(const std::string& target){
 			if(mode){
-				return (std::find_if(mats.begin(), mats.end(), 
-				 [&](const auto& word){return std::string(word.GetWord().begin(), word.GetWord().end()) == target;}) != mats.end());
+				return (std::visit([&](const auto& data){return std::find_if(data.begin(), data.end(),
+				 [&](const auto& word){return std::string(word->GetWord().begin(), word->GetWord().end()) == target;})
+				  != data.end();}, mats))
 			}
 			else{
-				return (std::find_if(mats.begin(), mats.end(),
-				 [&](const auto& word){return word.GetWord() == target;}) != mats.end());
+				return (std::visit([&](const auto& data){return std::find_if(data.begin(), data.end(),
+				 [&](const auto& word){return word->GetWord() == target;}) != data.end();}, mats));
 			}
 		}
 		static void trash(const std::string& path){
@@ -307,7 +308,7 @@ int main(){
 		std::cout << "text mode";
 	}
 
-	if(mat::mats){
+	if(mat::mats.empty()){
 		std::cout << "nothing";
 	}
 
