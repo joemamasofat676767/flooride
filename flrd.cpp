@@ -156,17 +156,19 @@ class mat{
 					 std::visit([&](const auto& data){return data.size();}, word->GetWord()));
 					file_out.put(0x1F);
 					
-					for(const auto& NextWord : std::visit([&](const auto& data){return data;}, word->GetNext())){
-						file_out.write(reinterpret_cast<const char*>(NextWord.data()), NextWord.size());
-						file_out.put(0);
-					}
-					file_out.put(0x1F);
-					
-					short i = 0;
-					for(const auto& embedding : word->GetEmbeddings()){
-						file_out.write(reinterpret_cast<const char*>(&embedding), sizeof(float));
-					}
-					file_out.put(0x1F);
+					std::visit([&](const auto& data){
+						for(const auto& NextWord : data->GetNext()){
+							file_out.write(reinterpret_cast<const char*>(NextWord.data()), NextWord.size());
+							file_out.put(0);
+						}
+						file_out.put(0x1F);
+		
+						short i = 0;
+						for(const auto& embedding : data->GetEmbeddings()){
+							file_out.write(reinterpret_cast<const char*>(&embedding), sizeof(float));
+						}
+						file_out.put(0x1F);
+					}, word);
 				}
 				file_out.put(0x4);
 				file_out.flush();
@@ -183,13 +185,13 @@ class mat{
 		static std::tuple<short, unsigned char, bool, bool> inspect(){return {dims, JesusByte, mode, report};}
 		static bool here(const std::string& target){
 			if(mode){
-				return (std::visit([&](const auto& data){return std::find_if(data.begin(), data.end(),
-				 [&](const auto& word){return std::string(word->GetWord().begin(), word->GetWord().end()) == target;})
-				  != data.end();}, mats))
+				return std::find_if(mats.begin(), mats.end(),
+				 [&](const auto& data){std::visit([&](const auto& word){return std::string(word->GetWord().begin(), word->GetWord().end()) == target;}, data);})
+				 != mats.end();
 			}
 			else{
-				return (std::visit([&](const auto& data){return std::find_if(data.begin(), data.end(),
-				 [&](const auto& word){return word->GetWord() == target;}) != data.end();}, mats));
+				return std::find_if(data.begin(), data.end(),
+				 [&](const auto& word){return word->GetWord() == target;}) != data.end();
 			}
 		}
 		static void trash(const std::string& path){
@@ -197,18 +199,18 @@ class mat{
 			file_out.close();
 		}
 
-		std::tuple<mat_WordBoth, std::vector<std::string>, std::vector<float>> see(){return {this->word, this->next, this->embeddings};}
+		std::tuple<mat_WordBoth, std::vector<mat_NextBoth>, std::vector<float>> see(){return {this->word, this->next, this->embeddings};}
 		const mat_WordBoth& GetWord(){return this->word;}
 		const std::vector<mat_WordBoth>& GetNext(){return this->next;}
 		const std::vector<float>& GetEmbeddings(){return this->embeddings;}
 		void restyle(char attr, std::string assign, short index = -1){
 			if(attr == 'w'){this->word = assign;}
-			else if(attr == 'n' && index != -1){this->next[index] = assign;}
-			else if(attr == 'e'&& index != -1){this->embeddings[index] = static_cast<short>(std::stoi(assign));}
+			else if(attr == 'n' && index != -1){std::visit([&](const auto& next){next->next[index] = assign;}, this);}
+			else if(attr == 'e'&& index != -1){std::visit([&](const auto& next){next->embeddings[index] = static_cast<short>(std::stoi(assign));}, this);}
 			else{return;}
 		}
-		void sow(std::string append){this->next.push_back(append);}
-		void trim(short index){this->next.erase(this->next.begin() + index);}
+		void sow(std::string append){std::visit([&](const auto& next){next->next.push_back(append);}, this);}
+		void trim(short index){std::visit([&](const auto& next){next->next.erase(next->next.begin() + index);}, this);}
 
 		mat(mat_WordBoth w, mat_NextBoth n, std::vector<float> e){
 			word = w;
@@ -283,8 +285,8 @@ int main(){
 	std::cout << '\n' << mat::contents << "\n";
 	for(const auto& thing : mat::mats){
 		std::cout << thing << ":";
-		if(mode){
-			std::cout << reinterpret_cast<const char*>(thing->GetWord().data()) << "\n";
+		if(mat::mode){
+			std::cout << reinterpret_cast<const char*>(std::visit([&](const auto& data){return data.data()}, thing->GetWord())) << "\n";
 		}
 		else{
 			std::cout << thing->GetWord();
