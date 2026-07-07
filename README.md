@@ -2,4 +2,4 @@
 this is a python module with highly optimized file <pre>.flrd</pre>
 there is text mode and binary mode which is decided by the 1st byte
 
-<sub>the mat 🫡</sup>
+<sub><sub>the mat 🫡</sup></sup>
