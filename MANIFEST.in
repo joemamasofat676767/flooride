@@ -1,2 +1,4 @@
-include mmx_json.h
 include main.cpp
+include pyproject.toml
+include README.md
+include setup.py

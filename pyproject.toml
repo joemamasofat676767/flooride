@@ -4,7 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flooride"
-version = "0.1.12"
-description = "light weight & low level ai framework. you need: python, pybind (mmx/json.h built into this module)"
+version = "0.1.15"
+description = "light weight & low level ai framework"
 authors = [{name = "blanco", email = "joemamasofat676767@gmail.com"}]
+readme = "README.md"
 license = "MIT"

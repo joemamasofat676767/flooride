@@ -11,7 +11,11 @@
 #include <algorithm>
 #include <variant>
 #include <chrono>
-#include <pybind11/pybind11.h
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/complex.h>
+#include <pybind11/functional.h>
+#include <pybind11/chrono.h>
 
 std::vector<unsigned char> FetchWord(std::vector<unsigned char>* binary);
 std::vector<std::vector<unsigned char>> FetchNext(std::vector<unsigned char>* binary);
@@ -36,6 +40,43 @@ class mat{
 	inline static bool report;
 	inline static std::vector<mat*> mats;
 	inline static std::string contents;
+
+	static void paint(char attr, short assign){
+		if(attr == 'm'){
+			mode = (assign > 0); 
+			if(mode){
+				JesusByte |= ((assign > 0) << 7);
+				for(const auto& obj : mats){
+					if(std::holds_alternative<std::string>(obj->word)){
+						std::string& word = std::get<0>(obj->word);
+						obj->word = bin(word.begin(), word.end());
+						std::vector<bin> NewNext;
+						for(const auto& NextWord : std::get<0>(obj->next)){
+							NewNext.push_back(bin(NextWord.begin(), NextWord.end()));
+						}
+						obj->next = NewNext;
+					}
+				}
+			}
+			else{
+				JesusByte &= ~((assign > 0) << 7);
+				for(const auto& obj : mats){
+					if(std::holds_alternative<bin>(obj->word)){
+						bin& word = std::get<1>(obj->word);
+						obj->word = std::string(word.begin(), word.end());
+						std::vector<std::string> NewNext;
+						for(const auto& NextWord : std::get<1>(obj->next)){
+							NewNext.push_back(std::string(NextWord.begin(), NextWord.end()));
+						}
+						obj->next = NewNext;
+					}
+				}
+			}
+		}
+		else if(attr == 'r'){report = (assign > 0);}
+		else if(attr == 'd'){dims = assign; JesusByte = static_cast<unsigned char>(assign) | (mode << 7);}
+		else{return;}
+	}
 	
 	static void lay(const std::string& path){	
 		std::ifstream file_in(path, std::ios::binary);
@@ -46,6 +87,7 @@ class mat{
 			mode = (JesusByte >> 7) & 1;
 			dims = JesusByte & 0b01111111;
 			file_in.seekg(1);
+			bool FirstLine = true;
 			if(!mode){
 				std::string line;
 				while(std::getline(file_in, line)){
@@ -74,7 +116,12 @@ class mat{
 						std::string word_name = line.substr(0, bracket1);
 						mat* MatObj_temp = new mat(word_name, next, embeddings);
 						mats.push_back(MatObj_temp);
-						contents += "\n" + line;
+						if(!FirstLine){
+							contents += "\n" + line;
+						}
+						else{
+							FirstLine = false;
+						}
 					}
 				}
 				else{
@@ -86,7 +133,6 @@ class mat{
 					std::vector<bin> next;
 					std::vector<float> embeddings;
 					int ch;
-					float TotalTime = 0;
 					while((ch = file_in.get()) != EOF){
 						byte = static_cast<unsigned char>(ch);
 						switch(state){
@@ -166,7 +212,6 @@ class mat{
 					}
 					file_out.put(0x1F);
 					
-					short i = 0;
 					for(const auto& embedding : word->GetEmbeddings()){
 						file_out.write(reinterpret_cast<const char*>(&embedding), sizeof(float));
 					}
@@ -210,7 +255,14 @@ class mat{
 		const mat_NextBoth& GetNext() const {return this->next;}
 		const std::vector<float>& GetEmbeddings() const {return this->embeddings;}
 		void restyle(char attr, std::string assign, short index = -1){
-			if(attr == 'w'){this->word = assign;}
+			if(attr == 'w'){
+				if(mode){
+					this->word = bin(assign.begin(), assign.end());
+				}
+				else{
+					this->word = assign;
+				}
+			}
 			else if(attr == 'n' && index != -1){
 				if(mode){
 					std::get<1>(this->next)[index] = bin(assign.begin(), assign.end());
@@ -219,7 +271,7 @@ class mat{
 					std::get<0>(this->next)[index] = assign;
 				}
 			}
-			else if(attr == 'e'&& index != -1){this->embeddings[index] = static_cast<short>(std::stoi(assign));}
+			else if(attr == 'e'&& index != -1){this->embeddings[index] = static_cast<float>(std::stof(assign));}
 			else{return;}
 		}
 		void sow(std::string append){
@@ -230,7 +282,14 @@ class mat{
 				std::get<0>(this->next).push_back(append);
 			}
 		}
-		void trim(short index){std::get<0>(this->next).erase(std::get<0>(this->next).begin() + index);}
+		void trim(short index){
+			if(mode){
+				std::get<0>(this->next).erase(std::get<0>(this->next).begin() + index);
+			}
+			else{
+				std::get<1>(this->next).erase(std::get<1>(this->next).begin() + index);
+			}
+		}
 		
 		mat(mat_WordBoth w, mat_NextBoth n, std::vector<float> e){
 			word = w;
@@ -293,5 +352,19 @@ class mat{
 }
 
 PYBIND11_MODULE(flooride, m){
-	py::class<mat>(m, "mat")
+	pybind11::class_<mat>(m, "mat")
+	 .def(pybind11::init<mat_WordBoth, mat_NextBoth, std::vector<float>>())
+	 .def_static("paint", &mat::paint, "change mat class attr")
+	 .def_static("lay", &mat::lay, "loads target file")
+	 .def_static("roll", &mat::roll, "write data to target file")
+	 .def_static("inspect", &mat::inspect, "see mat class attr")
+	 .def_static("here", &mat::here, "check is an mat obj exists")
+	 .def_static("trash", &mat::trash, "clears target file")
+	 .def("see", &mat::see, "look at a mat obj's word, next and embeddings")
+	 .def("GetWord", &mat::GetWord, "gets word of a mat obj")
+	 .def("GetNext", &mat::GetNext, "gets next of a mat obj")
+	 .def("GetEmbeddings", &mat::GetEmbeddings, "gets embeddings of a mat obj")
+	 .def("restyle", &mat::restyle, "changes an attr of a mat obj")
+	 .def("sow", &mat::sow, "appeds a word to a mat obj")
+	 .def("trim", &mat::trim, "deletes a word from mat obj by index");
 }
