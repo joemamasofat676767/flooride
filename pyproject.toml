@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flooride"
-version = "0.1.15"
+version = "0.1.17"
 description = "light weight & low level ai framework"
-authors = [{name = "blanco", email = "joemamasofat676767@gmail.com"}]
+authors = [{name = "joemamasofat676767", email = "joemamasofat676767@gmail.com"}]
 readme = "README.md"
 license = "MIT"

@@ -10,8 +10,8 @@ ext_module = Extension(
 )
 setup(
     name="flooride",
-    version="0.1.15",
+    version="0.1.17",
     description="light weight & low level ai framework",
-    author="blanco",
+    author="joemamasofat676767",
     ext_modules=[ext_module],
 )
