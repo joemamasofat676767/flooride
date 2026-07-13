@@ -1,20 +1,14 @@
 import flooride
 
-flooride.mat.lay("test.flrd")
-print(flooride.mat.inspect())
-print(flooride.mat.here("obama"))
-word = flooride.mat.MakeMat("kind", [], [900,8,4.7])
-word.sow("67")
+flooride.mat.lay("out.flrd")
+word = flooride.mat.MakeMat("kind", [], [457,31,-33])
 print(word.GetWord())
 print(word.GetNext())
-print(word.GetEmbeddings())
-word.restyle("w", "idk", -1)
-word.restyle("n", "sigma", 0)
-word.restyle("e", "800", 1)
 print(word.see())
-print(word.GetWord())
-print(word.GetNext())
-print(word.GetEmbeddings())
-word.trim(0)
+print(flooride.mat.inspect())
+flooride.mat.paint("d", 3)
+print(flooride.mat.inspect())
+
+print(flooride.mat.here("obama"))
 
 flooride.mat.roll("out.flrd")
