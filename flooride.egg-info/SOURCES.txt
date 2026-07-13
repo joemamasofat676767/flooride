@@ -1,9 +1,0 @@
-MANIFEST.in
-README.md
-main.cpp
-pyproject.toml
-setup.py
-flooride.egg-info/PKG-INFO
-flooride.egg-info/SOURCES.txt
-flooride.egg-info/dependency_links.txt
-flooride.egg-info/top_level.txt
